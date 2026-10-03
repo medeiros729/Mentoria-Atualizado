@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quem Você Vai Ouvir? — Simulação de Mentoria</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#10231b,#294a37);color:#fff;min-height:100vh}
+.container{max-width:1180px;margin:auto;padding:26px}
+.card{background:#f7f9f7;color:#18231d;border-radius:22px;padding:28px;box-shadow:0 18px 55px #0005}
+h1,h2,h3{margin-top:0}
+p{line-height:1.5}
+.header{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
+.balance{background:#dfeae2;border-radius:15px;padding:13px 20px;font-size:22px;font-weight:800}
+.balance small{display:block;font-size:12px;color:#59655d;margin-bottom:3px}
+.progress{height:10px;background:#d8dfda;border-radius:20px;overflow:hidden;margin:15px 0 24px}
+.progress div{height:100%;background:#416f55;width:0;transition:.3s}
+.value{background:#1d3b2d;color:white;border-radius:16px;padding:16px 20px;text-align:center;margin:18px 0}
+.value strong{display:block;font-size:32px;margin:5px}
+.scenario{font-size:21px;line-height:1.5;margin:20px 0}
+.timer{text-align:center;font-size:30px;font-weight:900;margin:10px 0 18px}
+.timer.warning{color:#b43c40}
+.mentors{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.mentor{background:white;border:2px solid #cbd4cd;border-radius:18px;padding:20px;cursor:pointer;transition:.2s;height:100%}
+.mentor:hover{transform:translateY(-4px);border-color:#416f55;box-shadow:0 10px 25px #0001}
+.mentor .tag{display:inline-block;background:#e7eee9;padding:5px 9px;border-radius:20px;font-size:12px;font-weight:800;margin-bottom:12px}
+.mentor h3{font-size:20px;margin-bottom:12px}
+.action{margin-top:16px;padding:11px 12px;border-radius:10px;background:#eef3ef;color:#294f3a;font-size:14px;font-weight:700}
+.result{margin-top:22px;padding:20px;border-radius:16px;background:#e9f0eb;border-left:7px solid #416f55}
+.result.warn{border-left-color:#b34b40}
+.actions{text-align:center;margin-top:22px}
+button{border:0;border-radius:12px;padding:14px 24px;background:#294f3a;color:#fff;font-size:17px;font-weight:800;cursor:pointer}
+button:hover{filter:brightness(1.08)}
+.hidden{display:none!important}
+.final-balance{background:#1d3b2d;color:#fff;border-radius:16px;padding:20px;text-align:center;font-size:20px}
+.final-balance strong{display:block;font-size:38px;margin-top:6px}
+table{width:100%;border-collapse:collapse;margin-top:20px;background:#fff}
+th,td{padding:11px;border-bottom:1px solid #ddd;text-align:left}
+th{background:#dfeae2}
+.note{background:#f0f4f1;border-radius:14px;padding:16px;margin-top:18px}
+@media(max-width:850px){.mentors{grid-template-columns:1fr}.container{padding:14px}.card{padding:20px}}
+</style>
+</head>
+<body>
+<div class="container">
+
+<section id="intro" class="card">
+<h1>🎯 Quem Você Vai Ouvir?</h1>
+<p style="font-size:19px">
+Você começa com <strong>R$ 10.000</strong>. Ao longo de 12 situações, três mentores
+apresentarão conselhos diferentes.
+</p>
+<p style="font-size:18px">
+Você terá <strong>60 segundos</strong> para escolher. O objetivo não é descobrir
+quem promete ganhar mais dinheiro, mas perceber <strong>como cada mentor pensa,
+quais riscos considera e quanto dinheiro coloca em jogo</strong>.
+</p>
+<div class="note">
+<strong>Importante:</strong> o saldo é acumulado. Dinheiro recebido entra primeiro.
+Dinheiro gasto sai do saldo. Economizar não é ganhar dinheiro. Transferir para uma
+reserva não destrói patrimônio.
+</div>
+<div class="actions"><button onclick="startGame()">Começar</button></div>
+</section>
+
+<section id="game" class="card hidden">
+<div class="header">
+<div><strong id="roundLabel"></strong></div>
+<div class="balance"><small>Saldo disponível</small><span id="balance"></span></div>
+</div>
+<div class="progress"><div id="bar"></div></div>
+
+<div class="value">
+VALOR DA SITUAÇÃO
+<strong id="value"></strong>
+<small id="valueDesc"></small>
+</div>
+
+<div id="scenario" class="scenario"></div>
+<div id="timer" class="timer">60s</div>
+<div style="text-align:center;color:#59655d;margin:-8px 0 18px;font-size:14px">Escolha o conselho. A consequência financeira será revelada depois.</div>
+
+<div id="mentors" class="mentors">
+<div class="mentor" id="m0" onclick="choose(0)">
+<span class="tag">MENTOR A</span><h3 id="n0"></h3><p id="t0"></p>
+</div>
+<div class="mentor" id="m1" onclick="choose(1)">
+<span class="tag">MENTOR B</span><h3 id="n1"></h3><p id="t1"></p>
+</div>
+<div class="mentor" id="m2" onclick="choose(2)">
+<span class="tag">MENTOR C</span><h3 id="n2"></h3><p id="t2"></p>
+</div>
+</div>
+
+<div id="result" class="result hidden"></div>
+<div class="actions"><button id="next" class="hidden" onclick="nextRound()">Próxima situação →</button></div>
+</section>
+
+<section id="final" class="card hidden">
+<h1>🏁 Resultado final</h1>
+<div class="final-balance">SALDO DISPONÍVEL<strong id="finalBal"></strong></div>
+<div id="summary" class="note"></div>
+<h2>Histórico</h2>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>#</th><th>Situação</th><th>Mentor</th><th>Movimentação</th><th>Saldo</th></tr></thead>
+<tbody id="hist"></tbody>
+</table>
+</div>
+<div class="actions"><button onclick="location.reload()">Jogar novamente</button></div>
+</section>
+</div>
+
+<script>
+const START=10000;
+let balance=START,round=0,timer=null,timeLeft=60,locked=false;
+let history=[],good=0;
+
+const rounds=[
+{
+title:"Você recebe R$ 2.000 de forma inesperada.",
+value:"R$ 2.000",
+desc:"O dinheiro entra antes da decisão.",
+mentors:[
+["Carlos","Eu guardaria esse dinheiro por enquanto. Não precisa decidir hoje."],
+["Marcos","Aproveite. Você estava querendo comprar algumas coisas há bastante tempo."],
+["Rafael","Eu separaria uma parte para investir e manteria outra disponível."]
+],
+actions:[
+"💰 +R$ 2.000 recebidos. Os R$ 2.000 permanecem disponíveis.",
+"💰 +R$ 2.000 recebidos; −R$ 1.500 em compras. Saldo líquido da situação: +R$ 500.",
+"💰 +R$ 2.000 recebidos; −R$ 1.000 investidos; depois +R$ 80 de rendimento. Saldo líquido: +R$ 1.080."
+],
+effects:[2000,500,1080],good:2,
+explain:[
+"Você recebeu R$ 2.000 e não gastou. O saldo aumentou R$ 2.000.",
+"Você recebeu R$ 2.000 e gastou R$ 1.500. O saldo aumentou R$ 500.",
+"Você recebeu R$ 2.000, investiu R$ 1.000 e obteve R$ 80 de rendimento. O saldo aumentou R$ 1.080."
+]},
+{
+title:"Você possui uma dívida de R$ 3.000.",
+value:"R$ 3.000",
+desc:"A dívida possui juros.",
+mentors:[
+["Carlos","Quite logo. Se os juros são altos, não faz sentido continuar carregando essa dívida."],
+["Marcos","Eu continuaria pagando normalmente e manteria o dinheiro disponível."],
+["Rafael","Eu tentaria negociar antes. Talvez consiga um desconto para quitar."]
+],
+actions:[
+"💰 −R$ 3.000 para quitar a dívida.",
+"💰 R$ 0 de saída extraordinária agora. A dívida permanece.",
+"💰 −R$ 2.400 para quitar após negociação. Economia de R$ 600 em relação aos R$ 3.000 originais."
+],
+effects:[-3000,0,-2400],good:2,
+explain:[
+"Você quitou a dívida integralmente. Os R$ 3.000 saíram do saldo.",
+"Você não quitou agora. Nenhum dinheiro saiu nesta rodada, mas a dívida continua.",
+"Você negociou e quitou por R$ 2.400. Você não ganhou R$ 600: simplesmente gastou R$ 600 menos para resolver a dívida."
+]},
+{
+title:"Seu carro precisa de manutenção de R$ 1.200.",
+value:"R$ 1.200",
+desc:"Você precisa decidir como resolver o problema.",
+mentors:[
+["Carlos","Faça o serviço completo agora. É melhor resolver tudo de uma vez."],
+["Marcos","Eu procuraria outro orçamento antes de autorizar."],
+["Rafael","Se o carro ainda puder rodar com segurança, faça apenas o que é realmente urgente."]
+],
+actions:[
+"💰 −R$ 1.200 para o serviço completo.",
+"💰 −R$ 900 após encontrar outro orçamento.",
+"💰 −R$ 500 para resolver somente o item urgente."
+],
+effects:[-1200,-900,-500],good:2,
+explain:[
+"Você pagou R$ 1.200 pelo serviço completo.",
+"Você encontrou o mesmo serviço por R$ 900. Você economizou R$ 300, mas ainda gastou R$ 900.",
+"Você resolveu apenas o que era urgente por R$ 500. Os outros R$ 700 não saíram do saldo agora."
+]},
+{
+title:"Seu salário aumenta R$ 1.000 por mês.",
+value:"R$ 1.000/mês",
+desc:"O aumento é recorrente.",
+mentors:[
+["Carlos","Agora você pode melhorar seu padrão de vida."],
+["Marcos","Eu manteria seu padrão atual por enquanto."],
+["Rafael","Eu usaria metade para construir patrimônio e metade para aproveitar."]
+],
+actions:[
+"💰 −R$ 1.000/mês em novas despesas.",
+"💰 R$ 0 de nova despesa. Os R$ 1.000/mês continuam disponíveis.",
+"💰 −R$ 500 para investimento; −R$ 500 para lazer. O investimento gera +R$ 40 na simulação."
+],
+effects:[-1000,0,-960],good:2,
+explain:[
+"Você transformou todo o aumento em novas despesas: R$ 1.000 por mês.",
+"Você não aumentou suas despesas. Os R$ 1.000 mensais continuam disponíveis.",
+"Você gastou R$ 500, investiu R$ 500 e obteve R$ 40 de rendimento. Resultado líquido da situação: −R$ 960."
+]},
+{
+title:"Você encontra algo que deseja comprar por R$ 1.800.",
+value:"R$ 1.800",
+desc:"Não é uma necessidade urgente.",
+mentors:[
+["Carlos","Se você quer e consegue pagar, compre."],
+["Marcos","Eu esperaria alguns dias antes de decidir."],
+["Rafael","Eu pesquisaria primeiro. Talvez encontre uma opção equivalente mais barata."]
+],
+actions:[
+"💰 −R$ 1.800 pela compra.",
+"💰 R$ 0. Você não compra agora.",
+"💰 −R$ 1.300 pela opção encontrada mais barata."
+],
+effects:[-1800,0,-1300],good:2,
+explain:[
+"Você comprou por R$ 1.800.",
+"Você não comprou. Os R$ 1.800 continuam disponíveis.",
+"Você encontrou uma opção por R$ 1.300. Você economizou R$ 500, mas gastou R$ 1.300."
+]},
+{
+title:"Um amigo pede R$ 2.000 emprestados.",
+value:"R$ 2.000",
+desc:"Você precisa decidir se e como vai ajudar.",
+mentors:[
+["Carlos","É seu amigo. Ajude. Depois ele devolve."],
+["Marcos","Eu não emprestaria enquanto não soubesse se posso perder esse dinheiro."],
+["Rafael","Se decidir ajudar, estabeleça valor, prazo e condições claras."]
+],
+actions:[
+"💰 −R$ 2.000 agora; depois apenas R$ 800 retornam. Perda líquida: R$ 1.200.",
+"💰 R$ 0. Você não empresta.",
+"💰 −R$ 2.000 agora; depois R$ 1.800 retornam. Perda líquida: R$ 200."
+],
+effects:[-1200,0,-200],good:2,
+explain:[
+"Você emprestou R$ 2.000 e apenas R$ 800 retornaram. A perda líquida foi R$ 1.200.",
+"Você não emprestou. Os R$ 2.000 continuam disponíveis.",
+"Você emprestou R$ 2.000 e recebeu R$ 1.800 de volta. A perda líquida foi R$ 200."
+]},
+{
+title:"Você recebe um bônus de R$ 1.500.",
+value:"R$ 1.500",
+desc:"O dinheiro entra agora.",
+mentors:[
+["Carlos","Use para se recompensar. Você trabalhou por isso."],
+["Marcos","Guarde tudo."],
+["Rafael","Eu colocaria R$ 1.000 em uma aplicação e usaria R$ 500."]
+],
+actions:[
+"💰 +R$ 1.500 recebidos; −R$ 1.500 em consumo. Resultado líquido: R$ 0.",
+"💰 +R$ 1.500 recebidos e mantidos.",
+"💰 +R$ 1.500 recebidos; −R$ 1.000 investidos; −R$ 500 gastos; +R$ 80 de rendimento. Resultado líquido: +R$ 80."
+],
+effects:[0,1500,80],good:2,
+explain:[
+"Os R$ 1.500 entraram, mas foram todos consumidos. O saldo termina igual ao que estava antes da situação.",
+"Os R$ 1.500 entraram e continuam disponíveis.",
+"Os R$ 1.500 entraram; R$ 1.000 foram investidos, R$ 500 foram gastos e o investimento rendeu R$ 80. Resultado líquido: +R$ 80."
+]},
+{
+title:"Você precisa de um equipamento de R$ 2.000 para trabalhar.",
+value:"R$ 2.000",
+desc:"Existem alternativas de compra, aluguel e equipamento.",
+mentors:[
+["Carlos","Compre o mais barato que encontrar."],
+["Marcos","Compre um equipamento adequado, mesmo que custe R$ 2.000."],
+["Rafael","Antes de comprar, veja se existe uma forma de alugar ou testar."]
+],
+actions:[
+"💰 −R$ 1.400 na compra; depois −R$ 500 em custos adicionais. Custo total: R$ 1.900.",
+"💰 −R$ 2.000 na compra do equipamento.",
+"💰 −R$ 300 pelo aluguel/teste. Os outros R$ 1.700 permanecem disponíveis."
+],
+effects:[-1900,-2000,-300],good:2,
+explain:[
+"O equipamento barato custou R$ 1.400, mas gerou mais R$ 500 de custos. Total: R$ 1.900.",
+"Você comprou o equipamento adequado por R$ 2.000.",
+"Você gastou R$ 300 para testar/alugar e preservou R$ 1.700 para decidir depois."
+]},
+{
+title:"Você tem R$ 2.500 disponíveis e surge uma oportunidade de investimento.",
+value:"R$ 2.500",
+desc:"Você pode colocar parte ou todo o dinheiro em jogo.",
+mentors:[
+["Carlos","Coloque todo o dinheiro. Quanto mais colocar, maior o retorno."],
+["Marcos","Eu não colocaria dinheiro até entender melhor."],
+["Rafael","Eu testaria com uma parcela pequena."]
+],
+actions:[
+"💰 −R$ 2.500 investidos; retornam R$ 1.000. Perda líquida: R$ 1.500.",
+"💰 R$ 0 de movimentação. Os R$ 2.500 permanecem disponíveis.",
+"💰 −R$ 500 investidos; retornam R$ 600. Ganho líquido: R$ 100."
+],
+effects:[-1500,0,100],good:2,
+explain:[
+"Você colocou R$ 2.500 e recebeu apenas R$ 1.000 de volta. Perda líquida: R$ 1.500.",
+"Você não investiu. Os R$ 2.500 continuam disponíveis.",
+"Você colocou R$ 500 e recebeu R$ 600. Ganho líquido: R$ 100. Os outros R$ 2.000 continuam disponíveis."
+]},
+{
+title:"Você percebe que gasta cerca de R$ 600 por mês em pequenas compras não planejadas.",
+value:"R$ 600/mês",
+desc:"São despesas recorrentes que parecem pequenas isoladamente.",
+mentors:[
+["Carlos","Não precisa mudar nada. São gastos pequenos."],
+["Marcos","Corte absolutamente tudo."],
+["Rafael","Escolha o que realmente importa e estabeleça um limite."]
+],
+actions:[
+"💰 −R$ 600/mês continuam saindo.",
+"💰 R$ 0/mês nessas compras.",
+"💰 −R$ 200/mês. Você reduz o gasto em R$ 400, mas ainda gasta R$ 200."
+],
+effects:[-600,0,-200],good:2,
+explain:[
+"Os pequenos gastos continuam consumindo R$ 600 por mês.",
+"Você eliminou os gastos dessa categoria. R$ 600 permanecem disponíveis por mês.",
+"Você reduziu a despesa para R$ 200. Economizou R$ 400, mas ainda gastou R$ 200."
+]},
+{
+title:"Você decide separar R$ 2.000 para uma reserva.",
+value:"R$ 2.000",
+desc:"Aqui precisamos distinguir saldo disponível de patrimônio.",
+mentors:[
+["Carlos","Guarde os R$ 2.000. Primeiro construa segurança."],
+["Marcos","Mantenha tudo na conta. Você pode precisar."],
+["Rafael","Separe R$ 1.000 agora e mantenha R$ 1.000 disponíveis."]
+],
+actions:[
+"💰 −R$ 2.000 do saldo disponível; +R$ 2.000 na reserva. Patrimônio não diminui.",
+"💰 R$ 0 de transferência. Os R$ 2.000 continuam disponíveis.",
+"💰 −R$ 1.000 do saldo disponível; +R$ 1.000 na reserva. Patrimônio não diminui."
+],
+effects:[0,0,0],good:0,
+explain:[
+"Você transferiu R$ 2.000 para uma reserva. O saldo disponível diminui, mas o dinheiro continua sendo seu patrimônio.",
+"Você manteve os R$ 2.000 disponíveis. Nenhuma movimentação ocorreu.",
+"Você transferiu R$ 1.000 para a reserva. O saldo disponível diminui, mas o patrimônio continua igual."
+]},
+{
+title:"Você precisa decidir quanto colocar em uma nova oportunidade.",
+value:"R$ 1.500",
+desc:"Agora você já passou por várias decisões e conhece seus próprios recursos.",
+mentors:[
+["Carlos","Você já analisou bastante. Eu faria logo. Se ficar esperando, pode perder a oportunidade."],
+["Marcos","Eu não faria nada. Se existe possibilidade de perder dinheiro, melhor não mexer."],
+["Rafael","Quanto você consegue perder? Qual é o objetivo? Talvez seja possível começar com uma parte menor."]
+],
+actions:[
+"💰 −R$ 1.500 comprometidos; retornam R$ 500. Perda líquida: R$ 1.000.",
+"💰 R$ 0. Os R$ 1.500 permanecem disponíveis.",
+"💰 −R$ 500 comprometidos; retornam R$ 600. Ganho líquido: R$ 100. Os outros R$ 1.000 permanecem disponíveis."
+],
+effects:[-1000,0,100],good:2,
+explain:[
+"Você comprometeu os R$ 1.500 e recebeu apenas R$ 500 de volta. Perda líquida: R$ 1.000.",
+"Você não entrou na oportunidade. Os R$ 1.500 permanecem disponíveis.",
+"Você começou com R$ 500, recebeu R$ 600 e preservou os outros R$ 1.000. Ganho líquido: R$ 100."
+]}
+];
+
+function money(n){return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
+function startGame(){document.getElementById('intro').classList.add('hidden');document.getElementById('game').classList.remove('hidden');showRound();}
+function showRound(){
+ locked=false;
+ const r=rounds[round];
+ document.getElementById('roundLabel').textContent=`Situação ${round+1} de ${rounds.length}`;
+ document.getElementById('balance').textContent=money(balance);
+ document.getElementById('bar').style.width=(round/rounds.length*100)+'%';
+ document.getElementById('value').textContent=r.value;
+ document.getElementById('valueDesc').textContent=r.desc;
+ document.getElementById('scenario').innerHTML='<strong>'+r.title+'</strong>';
+ for(let i=0;i<3;i++){
+  document.getElementById('n'+i).textContent=r.mentors[i][0];
+  document.getElementById('t'+i).textContent=r.mentors[i][1];
+  
+  document.getElementById('m'+i).style.pointerEvents='auto';
+ }
+ document.getElementById('result').classList.add('hidden');
+ document.getElementById('next').classList.add('hidden');
+ startTimer();
+}
+function startTimer(){
+ clearInterval(timer);timeLeft=60;updateTimer();
+ timer=setInterval(()=>{timeLeft--;updateTimer();if(timeLeft<=0){clearInterval(timer);if(!locked)choose(1);}},1000);
+}
+function updateTimer(){const e=document.getElementById('timer');e.textContent=timeLeft+'s';e.classList.toggle('warning',timeLeft<=10);}
+function choose(i){
+ if(locked)return;
+ locked=true;clearInterval(timer);
+ for(let j=0;j<3;j++)document.getElementById('m'+j).style.pointerEvents='none';
+ const r=rounds[round], impact=r.effects[i];
+ balance+=impact;
+ if(i===r.good)good++;
+ history.push({n:round+1,title:r.title,mentor:String.fromCharCode(65+i),impact,saldo:balance,detail:r.explain[i]});
+ const result=document.getElementById('result');
+ result.className='result '+(i===r.good?'':'warn');
+ result.innerHTML=`<h3>${i===r.good?'🧠 Analise o conselho':'🔎 Agora lide com a consequência'}</h3>
+ <p><strong>Movimentação líquida: ${impact>=0?'+':''}${money(impact)}</strong></p>
+ <p>${r.explain[i]}</p>
+ <p><strong>Saldo disponível agora: ${money(balance)}</strong></p>`;
+ result.classList.remove('hidden');
+ document.getElementById('balance').textContent=money(balance);
+ document.getElementById('next').classList.remove('hidden');
+}
+function nextRound(){round++;if(round>=rounds.length)finish();else showRound();}
+function finish(){
+ document.getElementById('game').classList.add('hidden');document.getElementById('final').classList.remove('hidden');
+ document.getElementById('finalBal').textContent=money(balance);
+ const variation=balance-START;
+ document.getElementById('summary').innerHTML=`
+ <p><strong>Saldo inicial:</strong> ${money(START)}</p>
+ <p><strong>Saldo final disponível:</strong> ${money(balance)}</p>
+ <p><strong>Variação do saldo disponível:</strong> ${variation>=0?'+':''}${money(variation)}</p>
+ <p><strong>Conselhos mais adequados na simulação:</strong> ${good} de ${rounds.length}</p>
+ <p><strong>Observação:</strong> transferências para reserva não foram tratadas como perda de patrimônio. O jogo diferencia dinheiro gasto, dinheiro recebido, economia e dinheiro apenas transferido.</p>`;
+ document.getElementById('hist').innerHTML=history.map(h=>`<tr><td>${h.n}</td><td>${h.title}</td><td>Mentor ${h.mentor}</td><td>${h.impact>=0?'+':''}${money(h.impact)}<br><small>${h.detail}</small></td><td>${money(h.saldo)}</td></tr>`).join('');
+}
+</script>
+</body>
+</html>
